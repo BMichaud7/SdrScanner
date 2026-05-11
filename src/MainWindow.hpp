@@ -6,9 +6,11 @@
 #include <QSpinBox>
 #include <QPushButton>
 #include <QLabel>
+#include <QLineEdit>
 #include <QTimer>
 #include <QMap>
 #include <QDateTime>
+#include <QSettings>
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -26,6 +28,7 @@ private slots:
 
 private:
     // ── Controls ──────────────────────────────────────────────────────────────
+    QLineEdit*      le_broker_;
     QDoubleSpinBox* sb_start_;
     QDoubleSpinBox* sb_end_;
     QDoubleSpinBox* sb_step_;
@@ -53,6 +56,8 @@ private:
     ScanWorker* worker_ = nullptr;
 
     void buildUi();
+    void saveSettings();
+    void loadSettings();
     void rebuildTable();
     int  freqKey(double freq_mhz) const { return (int)std::round(freq_mhz * 100); }
     static QString ageSuffix(const QDateTime& dt);

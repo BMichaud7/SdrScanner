@@ -16,8 +16,9 @@ static const char* HDR[] = {"Freq (MHz)", "BW (kHz)", "+dBc", "Type", "Last Seen
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     setWindowTitle("SDR Band Scanner");
-    resize(900, 580);
+    resize(960, 600);
     buildUi();
+    loadSettings();
 
     age_timer_ = new QTimer(this);
     connect(age_timer_, &QTimer::timeout, this, &MainWindow::onAgeTick);
@@ -26,14 +27,46 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
 
 MainWindow::~MainWindow() { onStop(); }
 
+void MainWindow::saveSettings() {
+    QSettings s;
+    s.setValue("broker",    le_broker_->text());
+    s.setValue("start_mhz", sb_start_->value());
+    s.setValue("end_mhz",   sb_end_->value());
+    s.setValue("step_mhz",  sb_step_->value());
+    s.setValue("dwell_ms",  sb_dwell_->value());
+    s.setValue("thresh_db", sb_thresh_->value());
+}
+
+void MainWindow::loadSettings() {
+    QSettings s;
+    le_broker_->setText(s.value("broker",    "amqp://localhost:5672").toString());
+    sb_start_->setValue( s.value("start_mhz", 80.0).toDouble());
+    sb_end_->setValue(   s.value("end_mhz",  200.0).toDouble());
+    sb_step_->setValue(  s.value("step_mhz",  20.0).toDouble());
+    sb_dwell_->setValue( s.value("dwell_ms", 2000.0).toDouble());
+    sb_thresh_->setValue(s.value("thresh_db",  10.0).toDouble());
+}
+
 void MainWindow::buildUi() {
     auto* central = new QWidget(this);
     setCentralWidget(central);
     auto* vbox = new QVBoxLayout(central);
 
     // ── Controls group ────────────────────────────────────────────────────────
-    auto* grp  = new QGroupBox("Scan Parameters", central);
-    auto* hbox = new QHBoxLayout(grp);
+    auto* grp   = new QGroupBox("Scan Parameters", central);
+    auto* gvbox = new QVBoxLayout(grp);
+
+    // Row 1: broker URL
+    auto* row1  = new QHBoxLayout;
+    row1->addWidget(new QLabel("Broker:"));
+    le_broker_ = new QLineEdit("amqp://localhost:5672");
+    le_broker_->setPlaceholderText("amqp://host:5672");
+    le_broker_->setMinimumWidth(220);
+    row1->addWidget(le_broker_, 1);
+    gvbox->addLayout(row1);
+
+    // Row 2: freq params + buttons
+    auto* hbox  = new QHBoxLayout;
 
     auto makeHz = [&](const char* lbl, double val, double lo, double hi, double step) {
         hbox->addWidget(new QLabel(lbl));
@@ -43,9 +76,9 @@ void MainWindow::buildUi() {
         hbox->addWidget(sb);
         return sb;
     };
-    sb_start_  = makeHz("Start:",     80.0,   50.0, 6000.0, 1.0);
-    sb_end_    = makeHz("End:",      200.0,   50.0, 6000.0, 1.0);
-    sb_step_   = makeHz("BW/step:", 20.0,    1.0,  56.0,   1.0);
+    sb_start_  = makeHz("Start:",    80.0,  50.0, 6000.0, 1.0);
+    sb_end_    = makeHz("End:",     200.0,  50.0, 6000.0, 1.0);
+    sb_step_   = makeHz("BW/step:", 20.0,   1.0,   56.0, 1.0);
 
     hbox->addWidget(new QLabel("Dwell:"));
     sb_dwell_ = new QDoubleSpinBox;
@@ -58,7 +91,6 @@ void MainWindow::buildUi() {
     sb_thresh_->setRange(3.0, 30.0); sb_thresh_->setValue(10.0);
     sb_thresh_->setSuffix(" dB"); sb_thresh_->setDecimals(1);
     hbox->addWidget(sb_thresh_);
-
     hbox->addStretch();
 
     btn_start_ = new QPushButton("▶  Start");
@@ -66,6 +98,7 @@ void MainWindow::buildUi() {
     btn_stop_->setEnabled(false);
     hbox->addWidget(btn_start_);
     hbox->addWidget(btn_stop_);
+    gvbox->addLayout(hbox);
 
     connect(btn_start_, &QPushButton::clicked, this, &MainWindow::onStart);
     connect(btn_stop_,  &QPushButton::clicked, this, &MainWindow::onStop);
@@ -95,7 +128,10 @@ void MainWindow::buildUi() {
 void MainWindow::onStart() {
     if (worker_) return;
 
+    saveSettings();
+
     ScanConfig cfg;
+    cfg.broker       = le_broker_->text().toStdString();
     cfg.start_mhz    = sb_start_->value();
     cfg.end_mhz      = sb_end_->value();
     cfg.step_mhz     = sb_step_->value();
