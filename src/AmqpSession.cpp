@@ -57,10 +57,18 @@ void AmqpSession::on_container_start(proton::container& c) {
 void AmqpSession::on_sendable(proton::sender&) {
     sender_ready_ = true;
     flush();
+    // Notify start() only on the first sendable — this is the point at which
+    // conn_ and sender_ are fully initialised and fire()/rpc() are safe to call.
     if (!connected_.exchange(true)) {
         std::lock_guard<std::mutex> lk(conn_mu_);
         conn_cv_.notify_all();
     }
+}
+
+void AmqpSession::on_connection_open(proton::connection&) {
+    // conn_ is now valid — flush anything queued before on_sendable fires
+    // (harmless if queue is empty; credit check inside flush() guards sending).
+    flush();
 }
 
 void AmqpSession::flush() {
@@ -110,7 +118,9 @@ void AmqpSession::fire(const nlohmann::json& req) {
         std::lock_guard<std::mutex> g(out_mu_);
         out_q_.push_back(body);
     }
-    // Schedule flush on the proton thread (thread-safe)
+    // conn_ is only valid after on_sendable sets connected_ — guard against
+    // callers that race before the proton thread finishes on_container_start.
+    if (!connected_.load()) return;
     conn_.work_queue().schedule(proton::duration(0), [this]{ flush(); });
 }
 

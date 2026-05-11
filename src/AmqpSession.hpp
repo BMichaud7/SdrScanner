@@ -44,8 +44,9 @@ private:
     void on_container_start(proton::container&)               override;
     void on_sendable       (proton::sender&)                  override;
     void on_message        (proton::delivery&, proton::message&) override;
-    void on_connection_error(proton::connection&)             override;
-    void on_transport_error (proton::transport&)              override;
+    void on_connection_open  (proton::connection&)            override;
+    void on_connection_error (proton::connection&)            override;
+    void on_transport_error  (proton::transport&)             override;
 
     void flush();   // must be called on proton thread
 

@@ -130,10 +130,15 @@ void ScanWorker::run() {
 
             json resp = amqp_.rpc(req, 20000, &stop_);
             if (stop_.load()) break;
-            if (resp.is_null() || resp.value("status", "") != "ACCEPTED") {
+            if (resp.is_null()) {
+                // AMQP disconnected or timed out — abort the whole scan
+                emit scanError("AMQP timeout/disconnect — stopping scan");
+                return;
+            }
+            if (resp.value("status", "") != "ACCEPTED") {
                 emit scanError(QString("Step %1 MHz rejected: %2")
                     .arg(cf).arg(QString::fromStdString(
-                        resp.value("reject_reason", "no response"))));
+                        resp.value("reject_reason", "?"))));
                 continue;
             }
 
