@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: ["main/1.0"]
+  pull_request:
+    branches: ["main/1.0"]
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y \
+            cmake ninja-build pkg-config git \
+            qt6-base-dev \
+            libqpid-proton-cpp12-dev \
+            libfftw3-dev
+
+      - name: Configure
+        run: |
+          cmake -B build -S . -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DFETCHCONTENT_QUIET=OFF
+
+      - name: Build
+        run: cmake --build build --parallel
+        # No unit tests — GUI app; integration tests require live hardware

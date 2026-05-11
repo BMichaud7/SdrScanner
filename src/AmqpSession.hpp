@@ -38,6 +38,7 @@ public:
     void fire(const nlohmann::json& req);
 
     void stop();
+    bool isConnected() const { return connected_.load(); }
 
 private:
     // ── proton callbacks (all on proton thread) ──────────────────────────────

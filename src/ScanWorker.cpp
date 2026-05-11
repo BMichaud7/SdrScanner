@@ -98,6 +98,12 @@ std::vector<float> ScanWorker::collectIQ(int port) {
 void ScanWorker::run() {
     amqp_.start(cfg_.broker, cfg_.user, cfg_.password);
 
+    if (!amqp_.isConnected()) {
+        emit scanError(QString("Cannot connect to broker at %1 — is it running?")
+                           .arg(QString::fromStdString(cfg_.broker)));
+        return;
+    }
+
     // Compute step centres
     double half = cfg_.step_mhz / 2.0;
     std::vector<double> centres;
