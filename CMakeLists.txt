@@ -35,6 +35,15 @@ FetchContent_Declare(json
     GIT_SHALLOW    TRUE)
 FetchContent_MakeAvailable(json)
 
+# ── Au units library (header-only) ───────────────────────────────────────────
+include(FetchContent)
+FetchContent_Declare(Au
+    GIT_REPOSITORY https://github.com/aurora-opensource/au
+    GIT_TAG "0.5.1"
+    GIT_SHALLOW TRUE
+    EXCLUDE_FROM_ALL)
+FetchContent_MakeAvailable(Au)
+
 # ── Executable ────────────────────────────────────────────────────────────────
 add_executable(sdr_scanner WIN32
     src/main.cpp
@@ -53,5 +62,6 @@ target_link_libraries(sdr_scanner PRIVATE
     ${PROTON_LIBRARIES}
     ${FFTW3_LINK_LIBS}
     nlohmann_json::nlohmann_json
+    Au::au
 )
 install(TARGETS sdr_scanner RUNTIME DESTINATION bin)

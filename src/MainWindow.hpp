@@ -21,8 +21,8 @@ public:
 private slots:
     void onStart();
     void onStop();
-    void onStepStarted(double cf_mhz, int step, int total);
-    void onSignalsFound(double cf_mhz, QVector<Signal> sigs);
+    void onStepStarted(au::QuantityD<au::Hertz> cf, int step, int total);
+    void onSignalsFound(au::QuantityD<au::Hertz> cf, QVector<Signal> sigs);
     void onScanError(QString msg);
     void onAgeTick();   // 1-second timer: refresh "Last Seen", drop stale entries
 
@@ -59,6 +59,9 @@ private:
     void saveSettings();
     void loadSettings();
     void rebuildTable();
-    int  freqKey(double freq_mhz) const { return (int)std::round(freq_mhz * 100); }
+    // freq in Hz → 10 kHz bucket key
+    int  freqKey(au::QuantityD<au::Hertz> freq) const {
+        return (int)std::round(freq.in(au::mega(au::hertz)) * 100);
+    }
     static QString ageSuffix(const QDateTime& dt);
 };

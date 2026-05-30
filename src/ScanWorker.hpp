@@ -1,6 +1,9 @@
 #pragma once
 #include "Spectrum.hpp"
 #include "AmqpSession.hpp"
+#include "au/units/hertz.hh"
+#include "au/units/seconds.hh"
+#include "au/prefix.hh"
 #include <QThread>
 #include <QVector>
 #include <atomic>
@@ -11,11 +14,11 @@ Q_DECLARE_METATYPE(Signal)
 Q_DECLARE_METATYPE(QVector<Signal>)
 
 struct ScanConfig {
-    double start_mhz   = 80.0;
-    double end_mhz     = 200.0;
-    double step_mhz    = 20.0;   // BW per step
-    double dwell_ms    = 2000.0;
-    double threshold_db= 10.0;
+    au::QuantityD<au::Hertz>   start     = au::mega(au::hertz)(80.0);
+    au::QuantityD<au::Hertz>   end       = au::mega(au::hertz)(200.0);
+    au::QuantityD<au::Hertz>   step      = au::mega(au::hertz)(20.0);   // BW per step
+    au::QuantityD<au::Seconds> dwell     = au::milli(au::seconds)(2000.0);
+    double                     threshold_db = 10.0;
     // AMQP broker
     std::string broker   = "amqp://localhost:5672";
     std::string user     = "sdr_ctrl";
@@ -30,8 +33,8 @@ public:
     void halt();   // thread-safe stop
 
 signals:
-    void stepStarted(double cf_mhz, int step, int total);
-    void signalsFound(double cf_mhz, QVector<Signal> sigs);
+    void stepStarted(au::QuantityD<au::Hertz> cf, int step, int total);
+    void signalsFound(au::QuantityD<au::Hertz> cf, QVector<Signal> sigs);
     void scanError(QString msg);
 
 protected:
@@ -43,7 +46,7 @@ private:
     AmqpSession       amqp_;
     Spectrum          spectrum_;
 
-    // Returns interleaved CF32 samples collected for dwell_ms on the given port.
+    // Returns interleaved CF32 samples collected for dwell on the given port.
     std::vector<float> collectIQ(int port);
 
     std::string makeUuid();

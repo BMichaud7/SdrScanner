@@ -15,7 +15,8 @@ Spectrum::~Spectrum() {
 }
 
 std::vector<Signal> Spectrum::analyse(const std::vector<float>& iq,
-                                      double cf_hz, double sr_hz,
+                                      au::QuantityD<au::Hertz> cf,
+                                      au::QuantityD<au::Hertz> sr,
                                       double threshold_db)
 {
     int n_samp = (int)iq.size() / 2;
@@ -48,8 +49,10 @@ std::vector<Signal> Spectrum::analyse(const std::vector<float>& iq,
     for (int i = 0; i < FRAME; ++i)
         psd[i] = 10.0 * std::log10(acc[(i + FRAME/2) % FRAME] + 1e-30);
 
-    double bin_hz   = sr_hz / FRAME;
-    auto   freq_of  = [&](int i){ return cf_hz + (i - FRAME/2) * bin_hz; };
+    double sr_hz   = sr.in(au::hertz);
+    double cf_hz   = cf.in(au::hertz);
+    double bin_hz  = sr_hz / FRAME;
+    auto   freq_of = [&](int i){ return cf_hz + (i - FRAME/2) * bin_hz; };
 
     // Noise floor (median) + threshold
     std::vector<double> tmp(psd);
@@ -70,22 +73,25 @@ std::vector<Signal> Spectrum::analyse(const std::vector<float>& iq,
     // Regions → signals
     std::vector<Signal> raw;
     for (auto& r : regs) {
-        auto  pk = (int)(std::max_element(psd.begin()+r.lo, psd.begin()+r.hi+1) - psd.begin());
+        auto  pk  = (int)(std::max_element(psd.begin()+r.lo, psd.begin()+r.hi+1) - psd.begin());
         double f  = freq_of(pk);
         double bw = freq_of(r.hi) - freq_of(r.lo);
         if (bw < 1e3 || bw > 19e6) continue;
-        raw.push_back({f/1e6, bw/1e3, psd[pk]-noise, ""});
+        raw.push_back({au::hertz(f), au::hertz(bw), psd[pk]-noise, ""});
     }
 
     // Merge peaks within 50 kHz (FM pilot / RDS tones collapse into one)
     std::vector<Signal> merged;
     for (auto& s : raw) {
-        if (!merged.empty() && std::abs(s.freq_mhz - merged.back().freq_mhz) < 0.05) {
+        if (!merged.empty() &&
+            std::abs((s.freq - merged.back().freq).in(au::hertz)) < 50e3) {
             auto& m = merged.back();
-            double lo = std::min(m.freq_mhz - m.bw_khz/2e3, s.freq_mhz - s.bw_khz/2e3);
-            double hi = std::max(m.freq_mhz + m.bw_khz/2e3, s.freq_mhz + s.bw_khz/2e3);
-            if (s.power_dbc > m.power_dbc) m.freq_mhz = s.freq_mhz;
-            m.bw_khz    = (hi - lo) * 1e3;
+            double lo = std::min(m.freq.in(au::hertz) - m.bw.in(au::hertz) / 2.0,
+                                 s.freq.in(au::hertz) - s.bw.in(au::hertz) / 2.0);
+            double hi = std::max(m.freq.in(au::hertz) + m.bw.in(au::hertz) / 2.0,
+                                 s.freq.in(au::hertz) + s.bw.in(au::hertz) / 2.0);
+            if (s.power_dbc > m.power_dbc) m.freq = s.freq;
+            m.bw        = au::hertz(hi - lo);
             m.power_dbc = std::max(m.power_dbc, s.power_dbc);
         } else {
             merged.push_back(s);
@@ -94,29 +100,33 @@ std::vector<Signal> Spectrum::analyse(const std::vector<float>& iq,
 
     std::vector<Signal> out;
     for (auto& s : merged) {
-        if (s.bw_khz < 2.0) continue;
-        s.type = classify(s.freq_mhz * 1e6, s.bw_khz * 1e3);
+        if (s.bw.in(au::hertz) < 2e3) continue;
+        s.type = classify(s.freq, s.bw);
         out.push_back(s);
     }
     return out;
 }
 
-std::string Spectrum::classify(double f, double bw) {
-    if (f >= 87.5e6 && f <= 108e6  && bw >  80e3) return "WFM — Broadcast FM";
-    if (f >= 87.5e6 && f <= 108e6)                 return "FM  — Low-power / distant";
-    if (f >= 108e6  && f <  118e6  && bw <  30e3) return "AM  — VOR / ILS nav";
-    if (f >= 108e6  && f <  118e6)                 return "AM  — Aviation nav";
-    if (f >= 118e6  && f <  136e6)                 return "AM  — Aircraft voice";
-    if (f >= 136e6  && f <  139e6  && bw >  30e3) return "APT / LRPT — Met satellite";
-    if (f >= 136e6  && f <  139e6)                 return "FSK — LEO telemetry";
-    if (f >= 144e6  && f <  148e6  && bw <  20e3) return "NFM — 2m amateur";
-    if (f >= 144e6  && f <  148e6)                 return "WFM / SSB — 2m amateur";
-    if (f >= 148e6  && f <  162e6)                 return "NFM — Public safety / APRS";
-    if (f >= 162.3e6 && f <= 162.6e6)              return "NFM — NOAA weather radio";
-    if (f >= 162e6  && f <  174e6)                 return "NFM — VHF public safety";
-    if (f >= 174e6  && f <  200e6  && bw >   5e6) return "DVB-T — Digital TV";
-    if (f >= 174e6  && f <  200e6)                 return "NFM / Digital — VHF hi";
-    if (bw > 100e3) return "WFM — Wideband";
-    if (bw >  20e3) return "NFM — Narrowband FM";
+std::string Spectrum::classify(au::QuantityD<au::Hertz> freq,
+                                au::QuantityD<au::Hertz> bw)
+{
+    double f  = freq.in(au::hertz);
+    double bw_hz = bw.in(au::hertz);
+    if (f >= 87.5e6 && f <= 108e6  && bw_hz >  80e3) return "WFM — Broadcast FM";
+    if (f >= 87.5e6 && f <= 108e6)                    return "FM  — Low-power / distant";
+    if (f >= 108e6  && f <  118e6  && bw_hz <  30e3) return "AM  — VOR / ILS nav";
+    if (f >= 108e6  && f <  118e6)                    return "AM  — Aviation nav";
+    if (f >= 118e6  && f <  136e6)                    return "AM  — Aircraft voice";
+    if (f >= 136e6  && f <  139e6  && bw_hz >  30e3) return "APT / LRPT — Met satellite";
+    if (f >= 136e6  && f <  139e6)                    return "FSK — LEO telemetry";
+    if (f >= 144e6  && f <  148e6  && bw_hz <  20e3) return "NFM — 2m amateur";
+    if (f >= 144e6  && f <  148e6)                    return "WFM / SSB — 2m amateur";
+    if (f >= 148e6  && f <  162e6)                    return "NFM — Public safety / APRS";
+    if (f >= 162.3e6 && f <= 162.6e6)                 return "NFM — NOAA weather radio";
+    if (f >= 162e6  && f <  174e6)                    return "NFM — VHF public safety";
+    if (f >= 174e6  && f <  200e6  && bw_hz >   5e6) return "DVB-T — Digital TV";
+    if (f >= 174e6  && f <  200e6)                    return "NFM / Digital — VHF hi";
+    if (bw_hz > 100e3) return "WFM — Wideband";
+    if (bw_hz >  20e3) return "NFM — Narrowband FM";
     return "AM / SSB — Narrowband";
 }

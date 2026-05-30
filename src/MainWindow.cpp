@@ -132,10 +132,10 @@ void MainWindow::onStart() {
 
     ScanConfig cfg;
     cfg.broker       = le_broker_->text().toStdString();
-    cfg.start_mhz    = sb_start_->value();
-    cfg.end_mhz      = sb_end_->value();
-    cfg.step_mhz     = sb_step_->value();
-    cfg.dwell_ms     = sb_dwell_->value();
+    cfg.start        = au::mega(au::hertz)(sb_start_->value());
+    cfg.end          = au::mega(au::hertz)(sb_end_->value());
+    cfg.step         = au::mega(au::hertz)(sb_step_->value());
+    cfg.dwell        = au::milli(au::seconds)(sb_dwell_->value());
     cfg.threshold_db = sb_thresh_->value();
 
     worker_ = new ScanWorker(cfg, this);
@@ -163,15 +163,16 @@ void MainWindow::onStop() {
 
 // ── Slots ─────────────────────────────────────────────────────────────────────
 
-void MainWindow::onStepStarted(double cf_mhz, int step, int total) {
-    status_lbl_->setText(QString("Scanning %.1f MHz  (step %1/%2)")
+void MainWindow::onStepStarted(au::QuantityD<au::Hertz> cf, int step, int total) {
+    double cf_mhz = cf.in(au::mega(au::hertz));
+    status_lbl_->setText(QString("Scanning %1 MHz  (step %2/%3)")
                          .arg(cf_mhz, 0, 'f', 1).arg(step).arg(total));
 }
 
-void MainWindow::onSignalsFound(double /*cf_mhz*/, QVector<Signal> sigs) {
+void MainWindow::onSignalsFound(au::QuantityD<au::Hertz> /*cf*/, QVector<Signal> sigs) {
     auto now = QDateTime::currentDateTime();
     for (const auto& s : sigs) {
-        int key = freqKey(s.freq_mhz);
+        int key = freqKey(s.freq);
         // Find nearest existing entry within ±5 buckets (50 kHz)
         int best = -1; int bestDist = 6;
         for (auto it = registry_.lowerBound(key-5); it != registry_.end() && it.key() <= key+5; ++it) {
@@ -232,8 +233,10 @@ void MainWindow::rebuildTable() {
             item->setBackground(bg);
         }
 
-        setCell(row, C_FREQ,  QString::number(e.sig.freq_mhz,  'f', 3));
-        setCell(row, C_BW,    QString::number(e.sig.bw_khz,    'f', 1));
+        double freq_mhz = e.sig.freq.in(au::mega(au::hertz));
+        double bw_khz   = e.sig.bw.in(au::kilo(au::hertz));
+        setCell(row, C_FREQ,  QString::number(freq_mhz, 'f', 3));
+        setCell(row, C_BW,    QString::number(bw_khz,   'f', 1));
         setCell(row, C_POWER, QString("+%1").arg(e.sig.power_dbc, 0, 'f', 1));
         setCell(row, C_TYPE,  QString::fromStdString(e.sig.type), Qt::AlignLeft | Qt::AlignVCenter);
         setCell(row, C_SEEN,  ageSuffix(e.last_seen));

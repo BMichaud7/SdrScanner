@@ -2,12 +2,15 @@
 #include <vector>
 #include <string>
 #include <fftw3.h>
+#include "au/units/hertz.hh"
+#include "au/units/seconds.hh"
+#include "au/prefix.hh"
 
 struct Signal {
-    double      freq_mhz  = 0;
-    double      bw_khz    = 0;
-    double      power_dbc = 0;
-    std::string type;
+    au::QuantityD<au::Hertz> freq     = au::hertz(0.0);   // stored in Hz
+    au::QuantityD<au::Hertz> bw       = au::hertz(0.0);   // stored in Hz
+    double                   power_dbc = 0;
+    std::string              type;
 };
 
 class Spectrum {
@@ -20,7 +23,8 @@ public:
     // Welch-averaged PSD → detected signals.
     // iq: interleaved CF32 samples, cf_hz: centre freq, sr_hz: sample rate
     std::vector<Signal> analyse(const std::vector<float>& iq,
-                                double cf_hz, double sr_hz,
+                                au::QuantityD<au::Hertz> cf,
+                                au::QuantityD<au::Hertz> sr,
                                 double threshold_db = 10.0);
 
 private:
@@ -28,5 +32,6 @@ private:
     fftwf_complex* in_   = nullptr;
     fftwf_complex* out_  = nullptr;
 
-    static std::string classify(double freq_hz, double bw_hz);
+    static std::string classify(au::QuantityD<au::Hertz> freq,
+                                au::QuantityD<au::Hertz> bw);
 };

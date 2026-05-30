@@ -74,7 +74,8 @@ std::vector<float> ScanWorker::collectIQ(int port) {
     if (::bind(fd, (sockaddr*)&addr, sizeof(addr)) < 0) { ::close(fd); return {}; }
 
     std::vector<float> samples;
-    auto deadline = steady_clock::now() + milliseconds((int64_t)cfg_.dwell_ms);
+    int64_t dwell_ms = (int64_t)cfg_.dwell.in(au::milli(au::seconds));
+    auto deadline = steady_clock::now() + milliseconds(dwell_ms);
     uint8_t buf[65536];
 
     while (!stop_.load() && steady_clock::now() < deadline) {
@@ -104,16 +105,23 @@ void ScanWorker::run() {
         return;
     }
 
-    // Compute step centres
-    double half = cfg_.step_mhz / 2.0;
+    // Compute step centres (all arithmetic in Hz)
+    double start_hz = cfg_.start.in(au::hertz);
+    double end_hz   = cfg_.end.in(au::hertz);
+    double step_hz  = cfg_.step.in(au::hertz);
+    double half     = step_hz / 2.0;
+
     std::vector<double> centres;
-    for (double cf = cfg_.start_mhz + half; cf < cfg_.end_mhz + 1e-6; cf += cfg_.step_mhz)
+    for (double cf = start_hz + half; cf < end_hz + 1e-6; cf += step_hz)
         centres.push_back(cf);
     int total = (int)centres.size();
 
+    int64_t dwell_ms = (int64_t)cfg_.dwell.in(au::milli(au::seconds));
+
     while (!stop_.load()) {
         for (int idx = 0; idx < total && !stop_.load(); ++idx) {
-            double cf = centres[idx];
+            double cf_hz = centres[idx];
+            auto   cf    = au::hertz(cf_hz);
             emit stepStarted(cf, idx + 1, total);
 
             std::string rid = makeUuid();
@@ -125,10 +133,10 @@ void ScanWorker::run() {
                 {"task_type",      "WIDEBAND"},
                 {"rank",           2},
                 {"schedule",       {{"mode", "IMMEDIATE"},
-                                    {"duration_ms", (int)(cfg_.dwell_ms + 1000)}}},
-                {"rf",             {{"center_freq_hz",  cf * 1e6},
-                                    {"bandwidth_hz",     cfg_.step_mhz * 1e6},
-                                    {"sample_rate_sps",  cfg_.step_mhz * 1e6},
+                                    {"duration_ms", dwell_ms + 1000}}},
+                {"rf",             {{"center_freq_hz",  cf_hz},
+                                    {"bandwidth_hz",     step_hz},
+                                    {"sample_rate_sps",  step_hz},
                                     {"rx_count",         1}}},
                 {"streaming",      {{"dest_ip", cfg_.dest_ip}}},
                 {"wideband",       {{"record_raw_iq", true}, {"fft_size", 2048}}}
@@ -143,8 +151,8 @@ void ScanWorker::run() {
             }
             if (resp.value("status", "") != "ACCEPTED") {
                 emit scanError(QString("Step %1 MHz rejected: %2")
-                    .arg(cf).arg(QString::fromStdString(
-                        resp.value("reject_reason", "?"))));
+                    .arg(cf.in(au::mega(au::hertz)))
+                    .arg(QString::fromStdString(resp.value("reject_reason", "?"))));
                 continue;
             }
 
@@ -167,8 +175,7 @@ void ScanWorker::run() {
                 {"reason",      "scan step done"}
             });
 
-            auto sigs = spectrum_.analyse(iq, cf * 1e6,
-                                          cfg_.step_mhz * 1e6,
+            auto sigs = spectrum_.analyse(iq, cf, au::hertz(step_hz),
                                           cfg_.threshold_db);
             emit signalsFound(cf, QVector<Signal>(sigs.begin(), sigs.end()));
 
