@@ -7,7 +7,8 @@ on:
     branches: ["main/1.0"]
 
 jobs:
-  build:
+  # ── Linux build ─────────────────────────────────────────────────────────────
+  linux:
     runs-on: ubuntu-24.04
 
     steps:
@@ -31,3 +32,51 @@ jobs:
       - name: Build
         run: cmake --build build --parallel
         # No unit tests — GUI app; integration tests require live hardware
+
+  # ── Windows build + artifact ─────────────────────────────────────────────────
+  windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgJsonGlob: vcpkg.json
+
+      - name: Configure
+        run: |
+          cmake -B build -S . `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows `
+            -DFETCHCONTENT_QUIET=OFF
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item build\Release\sdr_scanner.exe dist\
+          $qt_bin = (Get-Command windeployqt6.exe -ErrorAction SilentlyContinue)?.Source
+          if (-not $qt_bin) {
+            $qt_bin = Get-ChildItem "$env:VCPKG_ROOT\installed\x64-windows\tools\Qt6" `
+                        -Filter windeployqt6.exe -Recurse -ErrorAction SilentlyContinue |
+                      Select-Object -First 1 -ExpandProperty FullName
+          }
+          if ($qt_bin) {
+            & $qt_bin --release --no-translations --no-system-d3d-compiler dist\sdr_scanner.exe
+          } else {
+            Write-Warning "windeployqt6 not found — packaging exe only"
+          }
+          Compress-Archive -Path dist\* -DestinationPath SdrScanner-Windows-x64.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SdrScanner-Windows-x64
+          path: SdrScanner-Windows-x64.zip
+          retention-days: 30

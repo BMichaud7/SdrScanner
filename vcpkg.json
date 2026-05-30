@@ -1,0 +1,16 @@
+{
+  "name": "sdr-scanner",
+  "version": "1.0",
+  "dependencies": [
+    {
+      "name": "qt6-base",
+      "default-features": false,
+      "features": ["core", "widgets"]
+    },
+    {
+      "name": "qpid-proton",
+      "features": ["cpp"]
+    },
+    "fftw3"
+  ]
+}
