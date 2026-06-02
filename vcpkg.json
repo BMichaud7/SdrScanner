@@ -3,7 +3,7 @@
   "version": "1.0",
   "dependencies": [
     {
-      "name": "qt6-base",
+      "name": "qtbase",
       "default-features": false,
       "features": ["widgets"]
     },
