@@ -7,10 +7,7 @@
       "default-features": false,
       "features": ["widgets"]
     },
-    {
-      "name": "qpid-proton",
-      "features": ["cpp"]
-    },
+    "qpid-proton",
     "fftw3"
   ]
 }
