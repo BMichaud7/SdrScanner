@@ -10,7 +10,12 @@ find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 # On Linux: use pkg-config (system packages or Homebrew).
 if(WIN32)
     find_package(FFTW3 CONFIG REQUIRED)
-    set(FFTW3_LINK_LIBS FFTW3::fftw3f)
+    # vcpkg fftw3 exports FFTW3::fftw3 (double); use it for the GUI display path.
+    if(TARGET FFTW3::fftw3f)
+        set(FFTW3_LINK_LIBS FFTW3::fftw3f)
+    else()
+        set(FFTW3_LINK_LIBS FFTW3::fftw3)
+    endif()
     set(FFTW3_INCS "")
 else()
     find_package(PkgConfig REQUIRED)

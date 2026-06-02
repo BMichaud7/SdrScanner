@@ -8,6 +8,6 @@
       "features": ["widgets"]
     },
     "qpid-proton",
-    { "name": "fftw3", "features": ["float"] }
+    "fftw3"
   ]
 }
