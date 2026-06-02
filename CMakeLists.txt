@@ -9,12 +9,18 @@ find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 # On Windows (vcpkg): FFTW3 ships a CMake config package.
 # On Linux: use pkg-config (system packages or Homebrew).
 if(WIN32)
-    find_package(FFTW3 CONFIG REQUIRED)
-    # vcpkg fftw3 exports FFTW3::fftw3 (double); use it for the GUI display path.
-    if(TARGET FFTW3::fftw3f)
-        set(FFTW3_LINK_LIBS FFTW3::fftw3f)
+    # vcpkg ships float-precision FFTW as a separate CMake package (FFTW3f).
+    find_package(FFTW3f CONFIG QUIET)
+    if(TARGET FFTW3f::fftw3f)
+        set(FFTW3_LINK_LIBS FFTW3f::fftw3f)
     else()
-        set(FFTW3_LINK_LIBS FFTW3::fftw3)
+        find_package(FFTW3 CONFIG REQUIRED)
+        if(TARGET FFTW3::fftw3f)
+            set(FFTW3_LINK_LIBS FFTW3::fftw3f)
+        else()
+            find_library(FFTW3F_LIB NAMES fftw3f fftw3f-3 libfftw3f REQUIRED)
+            set(FFTW3_LINK_LIBS ${FFTW3F_LIB})
+        endif()
     endif()
     set(FFTW3_INCS "")
 else()
