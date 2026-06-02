@@ -5,7 +5,7 @@
     {
       "name": "qt6-base",
       "default-features": false,
-      "features": ["core", "widgets"]
+      "features": ["widgets"]
     },
     {
       "name": "qpid-proton",
