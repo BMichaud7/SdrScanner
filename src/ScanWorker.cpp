@@ -11,7 +11,7 @@
 #  include <netinet/in.h>
 #  include <arpa/inet.h>
 #  include <unistd.h>
-#  define close_socket(fd) close_socket(fd)
+#  define close_socket(fd) ::close(fd)
 #endif
 #include <cstring>
 #include <chrono>
@@ -23,7 +23,14 @@ using json = nlohmann::json;
 using namespace std::chrono;
 
 // IQ packet header (32 bytes, little-endian)
-struct __attribute__((packed)) IqHdr {
+#ifdef _MSC_VER
+#  pragma pack(push, 1)
+#endif
+struct
+#ifndef _MSC_VER
+__attribute__((packed))
+#endif
+IqHdr {
     uint32_t magic;          // 0x49515030
     uint32_t seq_num;
     uint64_t timestamp_ns;
@@ -33,6 +40,9 @@ struct __attribute__((packed)) IqHdr {
     uint8_t  format;
     uint8_t  flags;
 };
+#ifdef _MSC_VER
+#  pragma pack(pop)
+#endif
 static_assert(sizeof(IqHdr) == 32);
 static constexpr uint32_t IQ_MAGIC = 0x49515030;
 
