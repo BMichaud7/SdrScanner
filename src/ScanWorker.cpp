@@ -81,11 +81,11 @@ std::vector<float> ScanWorker::collectIQ(int port) {
 
     // 8 MB receive buffer
     int rcvbuf = 8 * 1024 * 1024;
-    ::setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf));
+    ::setsockopt(fd, SOL_SOCKET, SO_RCVBUF, (const char*)&rcvbuf, sizeof(rcvbuf));
 
     // 400 ms receive timeout so we can check stop_ regularly
     struct timeval tv { 0, 400000 };
-    ::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    ::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
 
     sockaddr_in addr{};
     addr.sin_family = AF_INET;
@@ -98,7 +98,7 @@ std::vector<float> ScanWorker::collectIQ(int port) {
     uint8_t buf[65536];
 
     while (!stop_.load() && steady_clock::now() < deadline) {
-        ssize_t n = ::recv(fd, buf, sizeof(buf), 0);
+        ssize_t n = ::recv(fd, (char*)buf, (int)sizeof(buf), 0);
         if (n < (ssize_t)sizeof(IqHdr)) continue;
         IqHdr hdr;
         std::memcpy(&hdr, buf, sizeof(hdr));
