@@ -1,3 +1,6 @@
+#ifdef _WIN32
+#  define _USE_MATH_DEFINES  // enable M_PI on MSVC
+#endif
 #include "Spectrum.hpp"
 #include <cmath>
 #include <algorithm>
