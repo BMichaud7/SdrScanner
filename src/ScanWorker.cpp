@@ -1,9 +1,18 @@
 #include "ScanWorker.hpp"
 #include <nlohmann/json.hpp>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
+#ifdef _WIN32
+#  include <winsock2.h>
+#  include <ws2tcpip.h>
+#  pragma comment(lib, "ws2_32.lib")
+   using ssize_t = SSIZE_T;
+#  define close_socket(fd) ::closesocket(fd)
+#else
+#  include <sys/socket.h>
+#  include <netinet/in.h>
+#  include <arpa/inet.h>
+#  include <unistd.h>
+#  define close_socket(fd) close_socket(fd)
+#endif
 #include <cstring>
 #include <chrono>
 #include <random>
@@ -71,7 +80,7 @@ std::vector<float> ScanWorker::collectIQ(int port) {
     sockaddr_in addr{};
     addr.sin_family = AF_INET;
     addr.sin_port   = htons(port);
-    if (::bind(fd, (sockaddr*)&addr, sizeof(addr)) < 0) { ::close(fd); return {}; }
+    if (::bind(fd, (sockaddr*)&addr, sizeof(addr)) < 0) { close_socket(fd); return {}; }
 
     std::vector<float> samples;
     int64_t dwell_ms = (int64_t)cfg_.dwell.in(au::milli(au::seconds));
@@ -90,7 +99,7 @@ std::vector<float> ScanWorker::collectIQ(int port) {
         for (int i = 0; i < hdr.n_samples * 2; ++i)
             samples.push_back(iq[i]);
     }
-    ::close(fd);
+    close_socket(fd);
     return samples;
 }
 
