@@ -272,3 +272,11 @@ void MainWindow::onAgeTick() {
     if (changed || !registry_.isEmpty())
         rebuildTable();
 }
+
+/*
+========================================================================
+End of file — OpenRFStack
+Subject to Personal Use License
+https://github.com/OpenRFStack
+========================================================================
+*/

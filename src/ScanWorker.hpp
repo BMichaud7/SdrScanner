@@ -64,3 +64,11 @@ private:
     std::string makeUuid();
     int64_t     nowMs();
 };
+
+/*
+========================================================================
+End of file — OpenRFStack
+Subject to Personal Use License
+https://github.com/OpenRFStack
+========================================================================
+*/

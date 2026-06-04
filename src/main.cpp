@@ -25,3 +25,11 @@ int main(int argc, char* argv[]) {
     w.show();
     return app.exec();
 }
+
+/*
+========================================================================
+End of file — OpenRFStack
+Subject to Personal Use License
+https://github.com/OpenRFStack
+========================================================================
+*/

@@ -92,3 +92,11 @@ private:
     std::mutex        conn_mu_;
     std::condition_variable conn_cv_;
 };
+
+/*
+========================================================================
+End of file — OpenRFStack
+Subject to Personal Use License
+https://github.com/OpenRFStack
+========================================================================
+*/

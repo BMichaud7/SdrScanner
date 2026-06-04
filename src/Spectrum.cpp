@@ -145,3 +145,11 @@ std::string Spectrum::classify(au::QuantityD<au::Hertz> freq,
     if (bw_hz >  20e3) return "NFM — Narrowband FM";
     return "AM / SSB — Narrowband";
 }
+
+/*
+========================================================================
+End of file — OpenRFStack
+Subject to Personal Use License
+https://github.com/OpenRFStack
+========================================================================
+*/

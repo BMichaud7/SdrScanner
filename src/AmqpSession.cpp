@@ -163,3 +163,11 @@ json AmqpSession::rpc(const json& req, int timeout_ms, std::atomic<bool>* stop_f
     if (!waiter->done) return {};
     try { return json::parse(waiter->body); } catch (...) { return {}; }
 }
+
+/*
+========================================================================
+End of file — OpenRFStack
+Subject to Personal Use License
+https://github.com/OpenRFStack
+========================================================================
+*/

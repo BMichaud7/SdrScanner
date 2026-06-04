@@ -47,3 +47,11 @@ private:
     static std::string classify(au::QuantityD<au::Hertz> freq,
                                 au::QuantityD<au::Hertz> bw);
 };
+
+/*
+========================================================================
+End of file — OpenRFStack
+Subject to Personal Use License
+https://github.com/OpenRFStack
+========================================================================
+*/
