@@ -1,3 +1,15 @@
+/*
+========================================================================
+Project: OpenRFStack
+Author:  Brendan Michaud
+Year:    2026
+Part of OpenRFStack (https://github.com/OpenRFStack)
+
+Licensed under the Personal Use License.
+Do not use for commercial, organizational, or military purposes.
+Contact author for permission: https://github.com/OpenRFStack
+========================================================================
+*/
 #ifdef _WIN32
 #  define _USE_MATH_DEFINES  // enable M_PI on MSVC
 #endif
