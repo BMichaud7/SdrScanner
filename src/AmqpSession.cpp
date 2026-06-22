@@ -16,6 +16,7 @@ Contact author for permission: https://github.com/OpenRFStack
 #include <proton/source_options.hpp>
 #include <proton/target_options.hpp>
 #include <proton/connection_options.hpp>
+#include <proton/reconnect_options.hpp>
 #include <proton/transport.hpp>
 #include <proton/symbol.hpp>
 #include <chrono>
@@ -50,6 +51,15 @@ void AmqpSession::stop() {
 void AmqpSession::on_container_start(proton::container& c) {
     proton::connection_options copts;
     copts.user(user_).password(pass_).sasl_enabled(true).sasl_allow_insecure_mechs(true);
+    // Without this, a connection attempt that loses the race with a
+    // still-starting broker is permanent: start()'s 10s wait just times
+    // out and the session sits dead with no way to recover short of
+    // restarting the whole GUI app.
+    proton::reconnect_options reconn_opts;
+    reconn_opts.delay(proton::duration(2000));
+    reconn_opts.max_delay(proton::duration(30000));
+    reconn_opts.max_attempts(0);
+    copts.reconnect(reconn_opts);
 
     conn_ = c.connect(url_, copts);
 
