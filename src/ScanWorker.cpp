@@ -170,7 +170,7 @@ void ScanWorker::run() {
                                     {"sample_rate_sps",  step_hz},
                                     {"rx_count",         1}}},
                 {"streaming",      {{"dest_ip", cfg_.dest_ip}}},
-                {"wideband",       {{"record_raw_iq", true}, {"fft_size", 2048}}}
+                {"task_params",    {{"wideband", {{"record_raw_iq", true}, {"fft_size", 2048}}}}}
             };
 
             json resp = amqp_.rpc(req, 20000, &stop_);
@@ -189,9 +189,8 @@ void ScanWorker::run() {
 
             std::string task_id = resp.value("task_id", "");
             int udp_port = 0;
-            auto& streams = resp["streams"];
-            if (streams.is_array() && !streams.empty())
-                udp_port = streams[0].value("udp_port", 0);
+            if (resp.contains("streams") && resp["streams"].is_array() && !resp["streams"].empty())
+                udp_port = resp["streams"][0].value("udp_port", 0);
 
             if (!udp_port) { emit scanError("No UDP port in response"); continue; }
 
