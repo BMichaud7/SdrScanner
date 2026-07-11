@@ -41,6 +41,7 @@ void AmqpSession::start(const std::string& url,  const std::string& user,
 
 void AmqpSession::stop() {
     if (loop_thread_.joinable()) {
+        connected_.store(false);
         container_.stop();
         loop_thread_.join();
     }
