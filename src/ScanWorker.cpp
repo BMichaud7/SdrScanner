@@ -62,8 +62,10 @@ static constexpr uint32_t IQ_MAGIC = 0x49515030;
 
 std::string ScanWorker::makeUuid() {
     static std::mt19937_64 rng(std::random_device{}());
+    static std::mutex rng_mu;
     std::uniform_int_distribution<uint64_t> dist;
-    auto a = dist(rng), b = dist(rng);
+    uint64_t a, b;
+    { std::lock_guard<std::mutex> lk(rng_mu); a = dist(rng); b = dist(rng); }
     std::ostringstream s;
     s << std::hex << std::setfill('0')
       << std::setw(8)  << (a >> 32)        << '-'
