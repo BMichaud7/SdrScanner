@@ -51,7 +51,9 @@ void AmqpSession::stop() {
 
 void AmqpSession::on_container_start(proton::container& c) {
     proton::connection_options copts;
-    copts.user(user_).password(pass_).sasl_enabled(true).sasl_allow_insecure_mechs(true);
+    copts.sasl_allowed_mechs("PLAIN");
+    copts.sasl_allow_insecure_mechs(true);
+    copts.user(user_).password(pass_);
     // Without this, a connection attempt that loses the race with a
     // still-starting broker is permanent: start()'s 10s wait just times
     // out and the session sits dead with no way to recover short of
