@@ -164,7 +164,13 @@ json AmqpSession::rpc(const json& req, int timeout_ms, std::atomic<bool>* stop_f
         std::unique_lock<std::mutex> lk(waiter->mu);
         while (!waiter->done) {
             if (stop_flag && stop_flag->load()) break;
-            if (waiter->cv.wait_until(lk, deadline) == std::cv_status::timeout) break;
+            auto remaining = duration_cast<milliseconds>(deadline - steady_clock::now());
+            if (remaining <= milliseconds(0)) break;
+            // Short waits so stop_flag is checked at least every 100 ms.
+            // wait_until(deadline) would block the full timeout when stop_ fires
+            // mid-wait, causing MainWindow::onStop()'s QThread::wait(8000) to
+            // race against a 20-second RPC timeout and delete a running thread.
+            waiter->cv.wait_for(lk, std::min(remaining, milliseconds(100)));
         }
     }
 
